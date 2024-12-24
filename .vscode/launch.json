@@ -1,0 +1,16 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "LLDB: CXX",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${command:cmake.launchTargetPath}",
+            "args": [],
+            "stopOnEntry": false,
+            "cwd": "${command:cmake.launchTargetDirectory}",
+            "internalConsoleOptions": "neverOpen",
+            "preLaunchTask": "cmake: cleanRebuild"
+        }
+    ]
+}

@@ -1,0 +1,171 @@
+# reference: https: //clang.llvm.org/docs/ClangFormatStyleOptions.html
+# version: clang 18.1.5
+# author: <wutieshan, 1766501249@qq.com>
+# time: 2024-8-6 11:45:46
+
+
+---
+# BasedOnStyle: Microsoft
+DisableFormat: false
+IndentWidth: 4
+TabWidth: 4
+MaxEmptyLinesToKeep: 1
+ColumnLimit: 120
+LineEnding: DeriveLF
+
+
+---
+Language: Cpp
+Standard: Auto
+# 访问控制符(public/private/protected)的缩进
+AccessModifierOffset: -4
+AlignConsecutiveAssignments:
+  Enabled: true
+  AcrossEmptyLines: false
+  AcrossComments: false
+  AlignCompound: true
+  PadOperators: true
+AlignConsecutiveBitFields: AcrossEmptyLinesAndComments
+AlignConsecutiveDeclarations:
+  Enabled: false
+  AcrossEmptyLines: false
+  AcrossComments: true
+  AlignFunctionPointers: false
+AlignConsecutiveMacros: AcrossEmptyLinesAndComments
+# 短语句对齐; 仅在开启AllowShortCaseExpressionOnASingleLine或AllowShortCaseLabelsOnASingleLine选项时生效
+AlignConsecutiveShortCaseStatements:
+  Enabled: true
+  AcrossEmptyLines: true
+  AcrossComments: true
+  # AlignCaseArrows: true
+  AlignCaseColons: true
+AlignEscapedNewlines: Left
+AlignOperands: DontAlign
+AlignTrailingComments:
+  Kind: Always
+  OverEmptyLines: 1
+AllowShortBlocksOnASingleLine: Always
+AllowShortCaseLabelsOnASingleLine: true
+AllowShortCompoundRequirementOnASingleLine: true
+AllowShortEnumsOnASingleLine: true
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLambdasOnASingleLine: All
+AllowShortLoopsOnASingleLine: true
+AttributeMacros:
+  - __capability
+  - __unused
+  - __output
+BinPackArguments: false
+BinPackParameters: false
+BitFieldColonSpacing: After
+BreakBeforeBraces: Custom
+# 仅当BreakBeforeBraces设置为Custom时, BraceWrapping才生效
+BraceWrapping:
+  AfterCaseLabel: false
+  AfterClass: true
+  # BraceWrappingAfterControlStatementStyle: Never
+  AfterEnum: false
+  AfterFunction: true
+  AfterNamespace: true
+  AfterStruct: true
+  AfterUnion: true
+  AfterExternBlock: true
+  BeforeCatch: true
+  BeforeElse: true
+  BeforeLambdaBody: false
+  BeforeWhile: false
+  IndentBraces: false
+  SplitEmptyFunction: true
+  SplitEmptyRecord: true
+  SplitEmptyNamespace: true
+BreakAdjacentStringLiterals: true
+BreakAfterAttributes: Leave
+# BreakAfterReturnType: Automatic
+BreakArrays: false
+BreakBeforeBinaryOperators: All
+BreakBeforeConceptDeclarations: Always
+BreakBeforeTernaryOperators: false
+BreakConstructorInitializers: AfterColon
+BreakInheritanceList: AfterColon
+BreakStringLiterals: true
+# BreakTemplateDeclarations: Yes
+CommentPragmas: '^ IWYU pragma:'
+CompactNamespaces: false
+ContinuationIndentWidth: 4
+Cpp11BracedListStyle: true
+DerivePointerAlignment: false
+EmptyLineAfterAccessModifier: Never
+EmptyLineBeforeAccessModifier: LogicalBlock
+FixNamespaceComments: true
+IncludeBlocks: Regroup
+IncludeCategories:
+  - Regex: ".*"
+    Priority: 1
+    SortPriority: 0
+    CaseSensitive: false
+IncludeIsMainRegex: "(_test)?&"
+IncludeIsMainSourceRegex: ""
+IndentAccessModifiers: false
+IndentCaseBlocks: true
+IndentCaseLabels: false
+IndentExternBlock: AfterExternBlock
+IndentGotoLabels: true
+IndentPPDirectives: None # 条件编译的缩进
+IndentRequiresClause: false
+IndentWrappedFunctionNames: false
+InsertBraces: false
+InsertNewlineAtEOF: false
+InsertTrailingCommas: None
+IntegerLiteralSeparator:
+  Binary: 4
+  Decimal: 0
+  Hex: 0
+# KeepEmptyLines:
+#   AtEndOfFile: false
+#   AtStartOfBlock: false
+#   AtStartOfFile: false
+LambdaBodyIndentation: Signature
+MacroBlockBegin: ""
+MacroBlockEnd: ""
+NamespaceIndentation: None
+PPIndentWidth: -1
+PackConstructorInitializers: CurrentLine
+PointerAlignment: Right
+ReferenceAlignment: Right
+ReflowComments: false
+RequiresClausePosition: OwnLine
+# RequiresExpressionIndentation: OuterScope
+SeparateDefinitionBlocks: Always
+ShortNamespaceLines: 1
+SortUsingDeclarations: Lexicographic
+SpaceAfterCStyleCast: false
+SpaceAfterLogicalNot: false
+SpaceAfterTemplateKeyword: false
+# SpaceAroundPointerQualifiers: Both
+SpaceBeforeCpp11BracedList: true
+SpaceBeforeCtorInitializerColon: false
+SpaceBeforeInheritanceColon: false
+SpaceBeforeParens: ControlStatements
+SpaceBeforeParensOptions:
+  AfterControlStatements: true
+  AfterForeachMacros: true
+  AfterFunctionDefinitionName: false
+  AfterFunctionDeclarationName: false
+  AfterIfMacros:   true
+  AfterOverloadedOperator: false
+  AfterPlacementOperator: true
+  AfterRequiresInClause: false
+  AfterRequiresInExpression: false
+  BeforeNonEmptyParentheses: false
+SpaceBeforeRangeBasedForLoopColon: false
+SpaceBeforeSquareBrackets: false
+SpaceInEmptyBlock: false
+SpaceInEmptyParentheses: false
+SpacesBeforeTrailingComments: 2
+SpacesInAngles: Never
+SpacesInContainerLiterals: false
+# 仅在启用ReflowComments选项时生效
+SpacesInLineCommentPrefix:
+  Minimum: 1
+  Maximum: 1

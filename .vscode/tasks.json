@@ -1,0 +1,16 @@
+{
+    "version": "2.0.0",
+    "options": {},
+    "tasks": [
+        {
+            "type": "cmake",
+            "label": "cmake: cleanRebuild",
+            "command": "cleanRebuild",
+            "targets": [],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        }
+    ]
+}
