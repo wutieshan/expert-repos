@@ -2,3 +2,7 @@
 .cache/
 build/
 out/cxx/
+
+
+# python
+.venv/
