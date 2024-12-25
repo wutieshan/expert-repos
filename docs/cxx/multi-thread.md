@@ -186,9 +186,63 @@ private:
 #### 3.2.4 死锁
 ```c++
 // 问题产生原因
-// 两个线程同时需要锁住多个互斥, 某一时刻它们都分别锁住了其中一部分, 等待对方解锁, 形成死循环
+// 为了完成某项操作而需要对多个互斥加锁, 在某一时刻, 两个线程都持有了一部分锁, 而又相互等待对方持有的锁被释放, 由此形成循环等待
 
 
 // 防范死锁的方法
-// 1. 确保始终按照相同的顺序加锁
+// 1. 始终按照相同的顺序加锁
+// 2. 使用std::lock()同时锁ovudoge互斥, 而没有死锁的风险
+#include <mutex>
+
+class some_big_object
+{
+};
+
+void swap(some_big_object &, some_big_object &);
+
+class X
+{
+public:
+    X(const some_big_object &obj): obj_(obj) {}
+
+    friend void swap_v1(X &x1, X &x2)
+    {
+        if (&x1 == &x2) {
+            return;
+        }
+        std::lock(x1.mtx_, x2.mtx_);                                    // 在此处同时锁住两个互斥, std::lock()的语义是all-or-nothing
+        std::lock_guard<std::mutex> lock_x1(x1.mtx_, std::adopt_lock);  // 使用std::adopt_lock表明互斥已经被锁住, 仅做所有权的转移, 以构造lock_guard对象
+        std::lock_guard<std::mutex> lock_x2(x2.mtx_, std::adopt_lock);
+        swap(x1.obj_, x2.obj_);
+    }
+
+    friend void swap_v2(X &x1, X &x2)
+    {
+        if (&x1 == &x2) {
+            return;
+        }
+
+        // c++17提供的RAII模板std::scoped_lock针对swap_v1的简化
+        // std::soped_lock与std::lock_guard等价, 唯一区别是std::scoped_lock接收可变参数
+        std::scoped_lock lock(x1.mtx_, x2.mtx_);
+        swap(x1.obj_, x2.obj_);
+    }
+
+private:
+    some_big_object obj_;
+    std::mutex mtx_;
+};
+```
+
+
+####  3.2.5 防范死锁的补充准则
+```c++
+// 虽然死锁最常见的诱因是锁操作, 但即便没有锁, 也可能发生死锁
+// 考虑一种情况: 线程A和B相互join(), 构成循环等待, 也会引起死锁
+// 防范死锁的基本准则: 只有另一线程有可能在等待当前线程, 那么当前线程不能反过来等待它
+// 具体如下:
+// 1. 避免嵌套锁
+// 2. 一旦持有锁, 就须避免调用由用户提供的API  ->  规则1的延伸
+// 3. 根据固定顺序获取锁
+// 4. 按层级加锁: 一旦在某个层级的互斥上持有锁, 那么只能由相对低层级的互斥获取锁, 从而限制代码行为
 ```
