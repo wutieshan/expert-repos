@@ -87,14 +87,14 @@ void high_level_func()
 auto main() -> int
 {
     std::vector<std::thread> threads;
-
-    std::thread t_high(high_level_func);
-    std::thread t_mix_1([]() {
+    threads.emplace_back(std::thread(high_level_func));
+    threads.emplace_back(std::thread([]() {
         high_level_func();
         low_level_func();
-    });
-    std::thread t_mix_2([]() {
+    }));
+    threads.emplace_back([]() {
         low_level_func();
         high_level_func();
     });
+    for (auto &t: threads) { t.join(); }
 }
