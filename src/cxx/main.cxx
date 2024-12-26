@@ -1,100 +1,61 @@
-#include <climits>
-#include <iostream>
 #include <mutex>
-#include <stdexcept>
-#include <thread>
-#include <vector>
 
-class hierarchical_mutex
+struct data_packet
+{
+};
+
+struct connection_info
+{
+};
+
+struct connection_handle
+{
+    void send(const data_packet &);
+    data_packet receive();
+};
+
+class DB
 {
 public:
-    explicit hierarchical_mutex(unsigned long value): value_(value), previous_value_(0) {}
-
-    void lock()
+    static DB &create(const connection_info &info)
     {
-        check_for_hierarchy_violation();
-        mtx_.lock();
-        update_hierarchy_value();
+        // case1: 对于只需要用到唯一一个全局实例的情况
+
+        // c++11规定初始化只会在某一线程上单独发生
+        // 在初始化完成之前, 其它线程不会越过静态数据的声明而继续执行
+        static DB instance(info);
+        return instance;
     }
 
-    void unlock()
+    void send(const data_packet &data)
     {
-        if (this_thread_value_ != value_) {
-            throw std::logic_error("mutex hierarchy violation");
-        }
-        this_thread_value_ = previous_value_;
-        mtx_.unlock();
+        // case2: 对于需要函数调用的情况
+
+        // 令人诟病的双重检验锁定模式
+        // 可能导致恶性条件竞争, 即一个线程在读取指针, 另一个线程获取到锁, 进入保护范围进行写操作, 由此产生读写不同步问题
+
+        // std::call_once确保指针初始化被某一个线程安全且唯一的完成
+        // 必要的同步数据由std::once_flag存储
+        // 同时, 相比于显式的使用互斥, 开销更低
+        std::call_once(flag_, &DB::connect, this);
+        handle_.send(data);
     }
 
-    bool try_lock()
+    data_packet receive()
     {
-        check_for_hierarchy_violation();
-        if (!mtx_.try_lock()) {
-            return false;
-        }
-        update_hierarchy_value();
-        return true;
+        std::call_once(flag_, &DB::connect, this);
+        return handle_.receive();
     }
 
 private:
-    std::mutex mtx_;
-    const unsigned long value_;
-    unsigned long previous_value_;
-    static thread_local unsigned long this_thread_value_;
+    connection_info info_;
+    connection_handle handle_;
+    std::once_flag flag_;
 
-    void check_for_hierarchy_violation() const
-    {
-        if (this_thread_value_ <= value_) {
-            throw std::logic_error("mutex hierarchy violation");
-        }
-    }
+    DB(const connection_info &info): info_(info) {}
 
-    void update_hierarchy_value()
+    void connect()
     {
-        previous_value_    = this_thread_value_;
-        this_thread_value_ = value_;
+        // init handle_ there
     }
 };
-
-thread_local unsigned long hierarchical_mutex::this_thread_value_ = ULONG_MAX;
-
-hierarchical_mutex high_level_mutex(200);
-hierarchical_mutex low_level_mutex(100);
-
-int do_low_level_stuff()
-{
-    std::cout << "low level stuff done" << std::endl;
-    return 0;
-};
-
-int low_level_func()
-{
-    std::lock_guard lock(low_level_mutex);
-    return do_low_level_stuff();
-}
-
-void do_high_level_stuff(int value)
-{
-    std::cout << "input argument: " << value << std::endl;
-}
-
-void high_level_func()
-{
-    std::lock_guard lock(high_level_mutex);
-    do_high_level_stuff(low_level_func());
-}
-
-auto main() -> int
-{
-    std::vector<std::thread> threads;
-    threads.emplace_back(std::thread(high_level_func));
-    threads.emplace_back(std::thread([]() {
-        high_level_func();
-        low_level_func();
-    }));
-    threads.emplace_back([]() {
-        low_level_func();
-        high_level_func();
-    });
-    for (auto &t: threads) { t.join(); }
-}

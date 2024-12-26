@@ -18,5 +18,5 @@ set(g_dir_src "src/cxx")
 # set(g_env_c_compiler "C:/tieshan/env/llvm-mingw/14.2.0/bin/clang.exe")
 # set(g_env_cxx_compiler "C:/tieshan/env/llvm-mingw/14.2.0/bin/clang++.exe")
 # hp-victus
-set(g_env_c_compiler "C:/tieshan_wu/devenv/mingw64/14.2.0/bin/gcc.exe")
-set(g_env_cxx_compiler "C:/tieshan_wu/devenv/mingw64/14.2.0/bin/g++.exe")
+set(g_env_c_compiler "C:/tieshan_wu/devenv/mingw64/14.2.0/bin/clang.exe")
+set(g_env_cxx_compiler "C:/tieshan_wu/devenv/mingw64/14.2.0/bin/clang++.exe")

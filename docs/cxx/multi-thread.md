@@ -349,3 +349,140 @@ auto main() -> int
     for (auto &t: threads) { t.join(); }
 }
 ```
+
+
+#### 3.2.6 std::unique_lock
+```c++
+// 相较于std::lock_guard, std::unique_lock提供了更多的灵活性
+// 可以自主选择在构造时是否给互斥加锁
+// 1. std::adopt_lock  ->  转义归属权
+// 2. std::defer_lock  ->  延迟加锁
+
+
+// 但是需要为这份灵活性付出代价, 即储存和更新互斥信息
+```
+
+
+#### 3.2.7 在不同作用域之间转移互斥归属权
+```c++
+// std::unique_lock不占有与之关联的互斥
+// 因此, 可以在不同作用域之间转移互斥的归属权
+// 1. 如果数据的来源是左值, 则必须显式的调用std::move()转移其归属权, 以免归属权以外转移到别处
+// 2. 如果数据的来源是右值, 则会自动进行
+
+
+// 应用1: 在函数中锁定互斥, 将归属权转义给调用者, 允许其在同一个锁的保护下执行其它操作
+```
+
+
+#### 按适合的粒度加锁
+```c++
+// 仅在访问共享数据期间锁住互斥
+// 持有锁期间尽量避免耗时的操作
+
+
+#include <chrono>
+#include <iostream>
+#include <mutex>
+#include <thread>
+#include <vector>
+
+static int count = 0;
+static std::mutex mutex;
+
+void get_and_process_data()
+{
+    std::unique_lock<std::mutex> lock(mutex);
+    count++;
+
+    // 耗时操作, 暂时解锁
+    lock.unlock();
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+    lock.lock();
+    count--;
+}
+
+auto main() -> int
+{
+    std::vector<std::thread> threads;
+    for (int i = 0; i < 10; i++) { threads.push_back(std::thread(get_and_process_data)); }
+    for (auto &t: threads) { t.join(); }
+    std::cout << "now, count = " << count << std::endl;
+}
+```
+
+
+### 3.3 保护共享数据的其它工具
+#### 3.3.1 在初始化过程中保护共享数据
+```c++
+// 延迟初始化场景
+
+
+#include <mutex>
+
+struct data_packet
+{
+};
+
+struct connection_info
+{
+};
+
+struct connection_handle
+{
+    void send(const data_packet &);
+    data_packet receive();
+};
+
+class DB
+{
+public:
+    static DB &create(const connection_info &info)
+    {
+        // case1: 对于只需要用到唯一一个全局实例的情况
+
+        // c++11规定初始化只会在某一线程上单独发生
+        // 在初始化完成之前, 其它线程不会越过静态数据的声明而继续执行
+        static DB instance(info);
+        return instance;
+    }
+
+    void send(const data_packet &data)
+    {
+        // case2: 对于需要函数调用的情况
+
+        // 令人诟病的双重检验锁定模式
+        // 可能导致恶性条件竞争, 即一个线程在读取指针, 另一个线程获取到锁, 进入保护范围进行写操作, 由此产生读写不同步问题
+
+        // std::call_once确保指针初始化被某一个线程安全且唯一的完成
+        // 必要的同步数据由std::once_flag存储
+        // 同时, 相比于显式的使用互斥, 开销更低
+        std::call_once(flag_, &DB::connect, this);
+        handle_.send(data);
+    }
+
+    data_packet receive()
+    {
+        std::call_once(flag_, &DB::connect, this);
+        return handle_.receive();
+    }
+
+private:
+    connection_info info_;
+    connection_handle handle_;
+    std::once_flag flag_;
+
+    DB(const connection_info &info): info_(info) {}
+
+    void connect()
+    {
+        // init handle_ there
+    }
+};
+```
+
+
+#### 3.3.2 保护甚少更新的数据结构
+```c++
+```
