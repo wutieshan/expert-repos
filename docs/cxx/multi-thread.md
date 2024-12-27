@@ -485,4 +485,48 @@ private:
 
 #### 3.3.2 保护甚少更新的数据结构
 ```c++
+// 读写锁
+// std::shared_timed_mutex相较于std::shared_mutex更灵活, 但需要付出相应的性能代价
+// 特点:
+// 1. 如果共享锁已被某些线程持有, 此时其它线程试图获取排他锁, 就会发生阻塞, 直到全部共享锁被释放
+// 2. 如果任一线程持有排他锁, 此时, 其它线程试图获取共享锁和排他锁也会被阻塞
+
+
+#include <map>
+#include <mutex>
+#include <shared_mutex>
+#include <string>
+
+class dns_entry
+{
+};
+
+class dns_cache
+{
+public:
+    dns_entry find_entry(const std::string &domain) const
+    {
+        // 读: 允许多个线程同时持有
+        std::shared_lock lock(mutex_);
+        auto it = entries_.find(domain);
+        return it == entries_.end() ? dns_entry() : it->second;
+    }
+
+    void update_entry(const std::string &domain, const dns_entry &entry)
+    {
+        // 写: 同时只能由一个线程持有
+        std::lock_guard lock(mutex_);
+        entries_[domain] = entry;
+    }
+
+private:
+    std::map<std::string, dns_entry> entries_;
+    mutable std::shared_mutex mutex_;
+};
+```
+
+
+#### 3.3.3 递归加锁
+```c++
+
 ```
