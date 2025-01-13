@@ -1,31 +1,18 @@
-#include <map>
-#include <mutex>
-#include <shared_mutex>
-#include <string>
+#include <cmath>
+#include <future>
+#include <iostream>
+#include <stdexcept>
 
-class dns_entry
+double square_root(double x)
 {
-};
+    if (x < 0) {
+        throw std::invalid_argument("sqrt argument must be non-negative");
+    }
+    return std::sqrt(x);
+}
 
-class dns_cache
+auto main() -> int
 {
-public:
-    dns_entry find_entry(const std::string &domain) const
-    {
-        // 读: 允许多个线程同时持有
-        std::shared_lock lock(mutex_);
-        auto it = entries_.find(domain);
-        return it == entries_.end() ? dns_entry() : it->second;
-    }
-
-    void update_entry(const std::string &domain, const dns_entry &entry)
-    {
-        // 写: 同时只能由一个线程持有
-        std::lock_guard lock(mutex_);
-        entries_[domain] = entry;
-    }
-
-private:
-    std::map<std::string, dns_entry> entries_;
-    mutable std::shared_mutex mutex_;
-};
+    std::future<double> f = std::async(square_root, -1);
+    std::cout << "Square root of 25: " << f.get() << std::endl;
+}

@@ -355,7 +355,7 @@ auto main() -> int
 ```c++
 // 相较于std::lock_guard, std::unique_lock提供了更多的灵活性
 // 可以自主选择在构造时是否给互斥加锁
-// 1. std::adopt_lock  ->  转义归属权
+// 1. std::adopt_lock  ->  转移归属权
 // 2. std::defer_lock  ->  延迟加锁
 
 
@@ -375,7 +375,7 @@ auto main() -> int
 ```
 
 
-#### 按适合的粒度加锁
+#### 3.2.8 按适合的粒度加锁
 ```c++
 // 仅在访问共享数据期间锁住互斥
 // 持有锁期间尽量避免耗时的操作
@@ -545,5 +545,229 @@ private:
 // 线程A等待线程B完成任务的几种方式
 // 1. 在共享数据内部维护一个标志位, 线程B完成任务后修改标志  -->  线程A需要不断检查标志 | 共享数据需要加锁
 // 2. 让线程A调用std::this_thread::sleep_for()在各次检查标志位之间休眠  -->  休眠的最佳时间难以评估
-// 3. 使用c++标准库提供的工具等待事件
+// 3. 使用c++标准库提供的工具(条件变量, future等)等待事件
+```
+
+
+#### 4.1.1 通过条件变量等待条件成立
+```c++
+// c++标准库提供了条件变量的两种实现:
+// 1. std::condition_variable
+// 2. std::condition_variable_any  ->  更加灵活, 但是可能产生额外的性能开销
+
+
+// std::condition_variable::wait的最简实现
+void wait(std::unique_ptr<std::mutex> &lock, Predicate pred)
+{
+    while(!pred()) {
+        lock->unlock();
+        wait_for_notification();
+        lock->lock();
+    }
+}
+```
+
+
+#### 4.1.2 利用条件变量构建线程安全的队列
+```c++
+#include <condition_variable>
+#include <memory>
+#include <mutex>
+#include <queue>
+
+template<typename T> class threadsafe_queue
+{
+public:
+    threadsafe_queue<T>() {}
+
+    threadsafe_queue<T>(const threadsafe_queue &other)
+    {
+        std::lock_guard lock(other.mutex_);
+        data_queue_ = other.data_queue_;
+    }
+
+    threadsafe_queue<T> &operator=(const threadsafe_queue &) = delete;
+
+    void push(T value)
+    {
+        std::lock_guard lock(mutex_);
+        data_queue_.push(value);
+        // 通过条件变量发送一个通知, 通知一个因wait而阻塞的线程去查验predicate;
+        // 此过程不能确定具体通知到哪一个线程, 甚至不能保证正好有线程正在等待通知
+        // 此外, 还有另一种方式notify_all(), 它会通知所有因wait而阻塞的线程, 去查验predicate;
+        data_cv_.notify_one();
+    }
+
+    void wait_and_pop(T &value)
+    {
+        std::unique_lock lock(mutex_);
+        // wait方法需要配合mutex使用, 它首先释放锁, 然后阻塞线程, 直到条件满足才会被唤醒, 然后重新获得锁并继续执行
+        // 所以使用更加灵活的unique_lock, 而不是lock_guard
+        // wait方法还需要一个predicate, 每次被唤醒之后会获取锁, 然后检测predicate, 如果为true, 则恢复线程; 否则释放锁继续阻塞直到下一次唤醒
+        // 被唤醒之后因为条件不满足而继续阻塞, 这种现象被称为"伪唤醒", 此时如果predicate有副作用, 则需要慎重考虑
+        data_cv_.wait(lock, [this]() { return !data_queue_.empty(); });
+        value = data_queue_.front();
+        data_queue_.pop();
+    }
+
+    std::shared_ptr<T> wait_and_pop()
+    {
+        std::unique_lock lock(mutex_);
+        if (data_queue_.empty()) {
+            return std::shared_ptr<T>();
+        }
+        data_cv_.wait(lock, [this]() { return !data_queue_.empty(); });
+        std::shared_ptr<T> result(std::make_shared<T>(data_queue_.front()));
+        data_queue_.pop();
+        return result;
+    }
+
+    bool try_pop(T &value)
+    {
+        std::lock_guard lock(mutex_);
+        if (data_queue_.empty()) {
+            return false;
+        }
+        value = data_queue_.front();
+        data_queue_.pop();
+        return true;
+    }
+
+    std::shared_ptr<T> try_pop()
+    {
+        std::lock_guard lock(mutex_);
+        if (data_queue_.empty()) {
+            return std::shared_ptr<T>();
+        }
+        std::shared_ptr<T> result(std::make_shared<T>(data_queue_.front()));
+        data_queue_.pop();
+        return result;
+    }
+
+    bool empty() const
+    {
+        std::lock_guard lock(mutex_);
+        return data_queue_.empty();
+    }
+
+private:
+    mutable std::mutex mutex_;  // 因为互斥因锁操作而变化, 而某些const成员中需要操作锁, 故使用mutable关键字
+    std::queue<T> data_queue_;
+    std::condition_variable data_cv_;
+};
+```
+
+
+### 4.2 通过future等待一次性事件
+```c++
+// c++标准库提供两种future模板:
+// 1. std::future<>
+// 2. std::shared_future<>
+```
+
+
+#### 4.2.1 通过std::async从后台任务返回值
+```c++
+// std::async按一部方式启动任务, 并返回std::future对象
+// std::async的构造函数与std::thread类似
+// 默认情况下, std::async会自行决定等待future时是启动新线程, 还是同步执行任务; 也可以显式的指定一个参数(std::latch::deferred | std::latch::async)
+```
+
+
+#### 4.2.2 通过std::packaged_task关联future实例和任务
+```c++
+#include <deque>
+#include <future>
+#include <iostream>
+#include <mutex>
+#include <thread>
+
+std::mutex mtx;
+std::deque<std::packaged_task<void()>> tasks;
+
+static int count    = 0;
+const int max_count = 10;
+
+bool shutdown_msg_received()
+{
+    if (count <= max_count) {
+        return false;
+    }
+    return true;
+}
+
+void process_gui_msg()
+{
+    std::cout << "process gui msg: " << ++count << std::endl;
+}
+
+void gui_thread()
+{
+    while (!shutdown_msg_received()) {
+        process_gui_msg();
+        std::packaged_task<void()> task;
+        {
+            std::lock_guard<std::mutex> lock(mtx);
+            if (!tasks.empty()) {
+                task = std::move(tasks.front());
+                tasks.pop_front();
+            }
+        }
+        task();
+    }
+    std::cout << "gui thread finished.\n";
+}
+
+template<typename Callable> std::future<void> post_task_for_gui_thread(Callable &&fn)
+{
+    std::packaged_task<void()> task(fn);
+    std::future<void> result = task.get_future();
+    std::lock_guard<std::mutex> lock(mtx);
+    tasks.push_back(std::move(task));
+    return result;
+}
+
+auto main() -> int
+{
+    std::thread gui_bg_thread(gui_thread);
+    for (int i = 0; i < max_count + 1; i++) {
+        post_task_for_gui_thread([i]() { std::cout << "post task " << i + 1 << std::endl; });
+    }
+    gui_bg_thread.join();
+    return 0;
+}
+```
+
+
+#### 4.2.3 通过std::promise异步求值
+```c++
+// std::promise与std::future的配合方式
+// 1. 等待数据的线程在future上阻塞
+// 2. 生产数据的线程在promise上通过set_value()设置值, 使future准备就绪
+```
+
+
+#### 4.2.4 将异常保存到future中
+```c++
+// 经由std::async调用的函数抛出异常, 会被保存到future中, 并在调用get()时重新抛出
+// 经std::promise, std::packaged_task封装的future也是一样
+```
+
+
+#### 4.2.5 多个线程一起等待
+```c++
+// std::future具有独占行为, 成员函数get()只能被有效的调用一次, 再次调用和导致未定义的行为, 根本原因使get()会进行移动操作
+```
+
+
+### 4.3 限时等待
+```c++
+// 前面介绍的等待是漫无止境的, 在某些情况下, 可能需要设置一个超时时间
+// 1. 迟延超时: 等待指定的时间间隔
+// 2. 绝对超时: 等待到指定的时间点
+
+
+// 大部分等待函数都有变体, 用于处理这两种情况
+// 1. _for: 迟延等待
+// 2. _until: 绝对等待
 ```
