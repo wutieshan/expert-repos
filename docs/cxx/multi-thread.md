@@ -771,3 +771,18 @@ auto main() -> int
 // 1. _for: 迟延等待
 // 2. _until: 绝对等待
 ```
+
+
+#### 4.3.1 时钟类
+```c++
+// 每种时钟都是一个类, 提供4种关键信息
+// 1. 当前时刻: time_point
+// 2. 时间值的类型
+// 3. 时钟的计时单元长度: std::ratio
+// 4. 计时速率是否恒定
+
+
+// std::chrono::system_clock
+// std::chrono::steady_clock
+// std::chrono::high_resolution_clock
+```
