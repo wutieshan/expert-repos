@@ -784,5 +784,13 @@ auto main() -> int
 
 // std::chrono::system_clock
 // std::chrono::steady_clock
-// std::chrono::high_resolution_clock
+// std::chrono::high_resolution_clock  ->  可能是某个类的typedef
+```
+
+
+#### 4.3.2 时长类
+```c++
+// std::chrono::duration<Rep, Period>
+// Rep： 指定采用哪种数据类型表示计时单元的数量
+// Period: 
 ```
