@@ -792,5 +792,164 @@ auto main() -> int
 ```c++
 // std::chrono::duration<Rep, Period>
 // Rep： 指定采用哪种数据类型表示计时单元的数量
-// Period: 
+// Period: 设定时长类的每个计时单元代表多少秒, 例如std::ratio<1, 1000>表示1毫秒
+
+
+// 在标准库中, 给出了一组预设的时长类的typedef
+// 1. std::chrono::nanoseconds
+// 2. std::chrono::microseconds
+// 3. std::chrono::milliseconds
+// 4. std::chrono::seconds
+// 5. std::chrono::minutes
+// 6. std::chrono::hours
+
+
+// 为了方便使用, c++14引入了std::chrono_literals, 预设了一些字面量后缀运算符
+
+
+// 时长类之间的转换
+// 1. 不要求截断, 可以进行隐式转换
+// 2. 要求截断, 可以使用std::chrono::duration_cast<>
+
+
+// 时长类支持算数运算, 如: std::chrono::minutes - 5 * std::chrono::milliseconds(100)
+
+
+// 计时单元的数量可以通过成员函数count()获取, 如: std::chrono::milliseconds(100).count()
+```
+
+
+#### 4.3.3 时间点类
+```c++
+// std::chrono::time_point<Clock, Duration>
+// Clock: 指明所参考的时钟类
+// Duration: 指明时间点相对于时钟的偏移量
+
+
+// 时间点是一个始于时钟纪元的跨度
+// 时钟纪元是一个基础特性, 无法直接查询, c++标准也为对其进行定义, 经典的时钟纪元比如: 1970-01-01 00:00:00 或 计算机的启动时刻
+// 尽管时钟纪元的时刻无法直接获知, 但是可以在给定的时间点上调用time_since_epoch()方法获取到一个时间长度
+```
+
+
+#### 4.3.4 接受超时时限的等待函数
+```c++
+// 线程睡眠
+// 1. std::this_thread::sleep_for()
+// 2. std::this_thread::sleep_until()
+
+
+// 配合std::condition_variable, std::future
+
+
+// 在给互斥加锁的时候设定超时时限
+// 1. std::timed_mutex
+// 2. std::shared_timed_mutex
+// 3. std::recursive_timed_mutex
+```
+
+
+### 4.4 运用同步操作简化代码
+#### 4.4.1 利用future进行函数式编程
+```c++
+// 函数式编程是一种编程范式, 函数调用的结果完全取决于输入参数, 而不依赖于任何外部状态
+// 纯函数产生的作用完全被限制在返回值上, 而不会改动任何外部状态
+
+
+#include <algorithm>
+#include <chrono>
+#include <cstdlib>
+#include <future>
+#include <iostream>
+#include <list>
+#include <utility>
+
+// 快排的串行实现
+template<typename T> std::list<T> sequential_quicksort(std::list<T> lst)
+{
+    if (lst.empty()) {
+        return lst;
+    }
+
+    std::list<T> result;
+    result.splice(result.begin(), lst, lst.begin());
+    const T &pivot = *result.begin();
+    auto middle    = std::partition(lst.begin(), lst.end(), [&](const T &t) { return t < pivot; });
+
+    std::list<T> lower;
+    lower.splice(lower.end(), lst, lst.begin(), middle);
+
+    auto new_lower  = sequential_quicksort(std::move(lower));
+    auto new_higher = sequential_quicksort(std::move(lst));
+
+    result.splice(result.end(), new_higher);
+    result.splice(result.begin(), new_lower);
+
+    return result;
+}
+
+// 快排的并行实现
+template<typename T> std::list<T> parallel_quicksort(std::list<T> lst)
+{
+    if (lst.empty()) {
+        return lst;
+    }
+
+    std::list<T> result;
+    result.splice(result.begin(), lst, lst.begin());
+    const T &pivot = *result.begin();
+    auto middle    = std::partition(lst.begin(), lst.end(), [&](const T &t) { return t < pivot; });  // 注意此处依然是串行的, 可以将该处也改造成并行版本
+
+    std::list<T> lower;
+    lower.splice(lower.end(), lst, lst.begin(), middle);
+
+    // 每次递归都会开启1个新线程, 因此递归层数越深, 线程数越多
+    // 一旦线程库检测到产生的线程过多, 就可能会转为按同步方式生成新任务, 从而减小开销
+    // 如果程序依赖线程库自动增减线程数目, 建议通过官方文档查清其具体行为
+    std::future<std::list<T>> new_lower = std::async(&parallel_quicksort<T>, std::move(lower));
+    auto new_higher                     = parallel_quicksort(std::move(lst));
+
+    result.splice(result.end(), new_higher);
+    result.splice(result.begin(), new_lower.get());
+
+    return result;
+}
+
+template<typename T> void show_list(const std::list<T> lst)
+{
+    for (auto it = lst.begin();; ++it) {
+        if (it == lst.end()) {
+            std::cout << std::endl;
+            break;
+        }
+        else if (it == lst.begin()) {
+            std::cout << *it;
+        }
+        else {
+            std::cout << ", " << *it;
+        }
+    }
+}
+
+auto main() -> int
+{
+    std::list<int> data;
+    for (int i = 0; i < 10; ++i) { data.push_back(std::rand() % 100); };
+    show_list(data);
+
+    auto t1 = std::chrono::high_resolution_clock::now();
+    show_list(std::move(sequential_quicksort(data)));
+    auto t2 = std::chrono::high_resolution_clock::now();
+    show_list(std::move(parallel_quicksort(data)));
+    auto t3 = std::chrono::high_resolution_clock::now();
+
+    std::cout << "sequential_quicksort costs " << t2 - t1 << std::endl;
+    std::cout << "parallel_quicksort costs " << t3 - t2 << std::endl;
+}
+```
+
+
+#### 4.4.2 使用消息传递进行同步
+```c++
+// 
 ```
