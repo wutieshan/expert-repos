@@ -951,5 +951,181 @@ auto main() -> int
 
 #### 4.4.2 使用消息传递进行同步
 ```c++
-// 
+// CSP(Communicating Sequential Processes)的理念: 假设不存在共享数据, 线程只接受消息
+// 单依据线程的行为就可以对其进行完整的逻辑判断
+// 实际上, CSP线程与状态机等效
+```
+
+
+#### 4.4.3 符合并发技术规约的后续风格并发
+```c++
+// 并发技术规约在std::experimental中给出了std::promise和std::packaged_task的新版本
+```
+
+
+#### 4.4.4 后续函数的连锁调用
+```c++
+// 场景: 有一系列耗时的任务需要执行, 为了让主线程抽身执行其它任务, 想按照异步方式执行这些任务
+```
+
+
+#### 4.4.5 等待多个future
+```c++
+// std::experimenal::when_all()
+// std::experimenal::when_any()
+```
+
+
+#### 4.4.6 线程闩
+```c++
+// std::experimental::latch
+// 闩是一个同步对象, 内含一个计数器
+// 构造对象时设定一个计数器的初始值, 每当等待的事件发生, 计数器减1, 一旦减到0就会进入就绪状态, 一旦就绪, 就一致保持该状态不变
+// 有如下方法
+// 1. wait()
+// 2. count_down_and_wait()
+// 3. is_ready()
+
+
+#include <format>
+#include <future>
+#include <iostream>
+#include <latch>
+#include <vector>
+
+auto main() -> int
+{
+    const unsigned int threaded_count = 20;
+
+    std::latch done(threaded_count);
+    std::vector<std::future<void>> threads;
+    int data[threaded_count];
+
+    for (unsigned int i = 0; i < threaded_count; ++i) {
+        // 循环计数器i按引用捕获可能导致数据竞争
+        threads.push_back(std::async(std::launch::async, [&, i]() {
+            std::cout << std::format("processing data[{}]...\n", i);
+            data[i] = i * i + 1;
+            done.count_down();
+        }));
+    }
+
+    done.wait();
+    for (auto &d: data) { std::cout << d << " "; }
+    std::cout << std::endl;
+}
+```
+
+
+#### 4.4.7 线程卡
+```c++
+// std::experimental::barrier
+// 卡的作用是同步一组线程, 当一组线程的最后一个运行到卡处, 所有线程都被释放, 同时卡被自动重置
+// 1. arrive_and_wait(): 等待同步组的其它线程
+// 2. arrive_and_drop(): 令线程显式的脱离其同步组
+```
+
+
+## 5 c++内存模型和原子操作
+### 5.1 内存模型基础
+#### 5.1.1 对象和内存区域
+```c++
+// c++程序的数据全部都由对象构成, 且在c++标准的定义中, 对象即是某一存储范围
+
+
+// 每个变量都是对象, 对象的数据成员也是对象
+// 每个对象都占用至少一块内存区域
+// 内建基本类型占用有且仅有一块内存区域
+// 相邻的位域术语统一内存区域
+```
+
+
+#### 5.1.2 对象, 内存区域, 并发
+```c++
+// 所有与多线程相关的操作都会牵涉内存区域
+// 如果两个线程各自访问分离的内存区域, 则相安无事; 反之就需要警惕了
+
+
+// 要避免条件竞争, 必须保证访问次序清晰分明, 有多种方法
+// 1. 互斥
+// 2. 原子操作
+```
+
+
+#### 5.1.3 改动序列
+```c++
+// 在c++程序中, 每个对象都有一个改动序列, 它由所有线程在对象上的全部写操作构成, 其中第一个写操作即为对象的初始化
+// 在不同线程上观测某对象的改动序列, 如果所见各异, 说明出现数据竞争和未定义行为
+```
+
+
+### 5.2 c++中的原子操作及其类别
+#### 5.2.1 标准原子类型
+```c++
+// 原子操作是不可分割的操作, 在系统的任一线程内, 都不会观察到这种操作处于半完成状态
+// 大多数原子类型都有is_lock_free()成员函数, 用于判断该类型是否是无锁的
+// 如果叶子操作本身在内部使用了互斥, 很可能无法达到所期望的性能提升, 此时更好的方式是使用互斥, 它更加直观且不易出错
+
+
+// c++定义了一组宏, 用于在编译期判定不同整数类型特化的原子类型是否属于无锁数据结构
+// 如: ATOMIC_BOOL_LOCK_FREE, ATOMIC_CHAR_LOCK_FREE...
+// 取值的含义如下:
+// 0: 该原子类型从来都不是无锁结构
+// 1: 在运行时才能确定该原子类型是否是无锁结构
+// 2: 该原子类型在一直都是无锁结构
+
+
+// std::atomic<>泛化模板所具有的操作
+// 1. load()
+// 2. store()
+// 3. exchange()
+// 4. compare_exchange_weak()
+// 5. compare_exchange_strong()
+
+
+// 原子类型上的每一种操作, 都可以提供额外的参数, 用于指定内存次序
+// 枚举类型为: std::memory_order
+```
+
+
+#### 5.2.2 std::atomic_flag
+```c++
+// std::atomic_flag是最简单的原子类型, 表示一个布尔标志, 它只有两种状态: 成立/置零
+
+
+// 由于std::atomic_flag的特殊性, 必须通过宏ATOMIC_FLAG_INIT初始化为置零状态, 之后才能进行其它操作
+std::atomic_flag flag = ATOMIC_FLAG_INIT;
+
+
+// 操作std::atomic_flag
+// 1. test_and_set()
+// 2. clear()
+
+
+#include <atomic>
+
+// 使用std::atomic_flag实现自旋锁
+class spinlock
+{
+public:
+    spinlock(): flag_(ATOMIC_FLAG_INIT) {}
+
+    void lock()
+    {
+        // 自旋等待, 一旦读取值变成false, 则表明线程已将标志设置为成立
+        // 可以发现, 这种实现是在lock()函数内忙等
+        while (flag_.test_and_set(std::memory_order_acquire)) {}
+    }
+
+    void unlock() { flag_.clear(std::memory_order_release); }
+
+private:
+    std::atomic_flag flag_;
+};
+```
+
+
+#### 5.2.3 std::atomic<bool>
+```c++
+
 ```
