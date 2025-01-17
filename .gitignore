@@ -6,3 +6,5 @@ out/cxx/
 
 # python
 .venv/
+src/flask-tpl/instance/
+*.pyc

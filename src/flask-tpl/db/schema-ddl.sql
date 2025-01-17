@@ -1,0 +1,5 @@
+CREATE TABLE IF NOT EXISTS t_user (
+    id INTEGER PRIMARY KEY,
+    name TEXT,
+    age INTEGER
+);
