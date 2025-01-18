@@ -11,7 +11,7 @@ def app_factory():
 
     app.config.from_mapping(
         SECRET_KEY=const.FLASK_SECRET_KEY,
-        DATABASE=const.FLASK_SQLITE3_PATH,
+        DATABASE=const.FLASK_DB_PATH,
     )
     app.config.from_mapping()
 

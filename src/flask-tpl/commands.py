@@ -1,13 +1,23 @@
 import click
-from db import SQLiteProxy
+import flask
+from db import get_db
 from config import Constants as const
 
 
 @click.command("init-db")
 def init_db():
-    proxy = SQLiteProxy(const.FLASK_SQLITE3_PATH)
-    proxy.executescript(const.DB_DDL_PATH)
-    proxy.executescript(const.DB_DML_PATH)
+    db = get_db()
+
+    with flask.current_app.open_resource(const.FLASK_DB_DDL_PATH) as fp:
+        sqltext = fp.read().decode("utf8")
+        click.echo(f"{sqltext=}")
+        db.executescript(str.replace(sqltext, "\r\n", " "))
+    
+    with flask.current_app.open_resource(const.FLASK_DB_DML_PATH) as fp:
+        sqltext = fp.read().decode("utf8")
+        click.echo(f"{sqltext=}")
+        db.executescript(sqltext)
+    
     click.echo("database initialized successfully.")
 
 

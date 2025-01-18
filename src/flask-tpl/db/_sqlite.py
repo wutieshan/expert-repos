@@ -18,6 +18,7 @@ class SQLiteProxy:
                     autocommit=False,
                 )
                 self.conn.row_factory = sqlite3.Row
+            return self.conn
 
     def close(self):
         with self.mutex:
@@ -33,12 +34,11 @@ class SQLiteProxy:
             self.conn.commit()
             return cursor
 
-    def executescript(self, filepath: str):
+    def executescript(self, sqltext: str):
         self.connect()
         with self.mutex:
             cursor = self.conn.cursor()
-            with open(filepath, "r", encoding="utf8") as f:
-                cursor.executescript(f.read())
+            cursor.executescript(sqltext)
             self.conn.commit()
             return cursor
 
