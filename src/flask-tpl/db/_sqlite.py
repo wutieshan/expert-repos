@@ -13,7 +13,7 @@ class SQLiteProxy:
             if self.conn is None:
                 self.conn = sqlite3.connect(
                     database=self.path,
-                    check_same_thread=True,
+                    check_same_thread=False,
                     detect_types=sqlite3.PARSE_DECLTYPES,
                     autocommit=False,
                 )
@@ -25,24 +25,37 @@ class SQLiteProxy:
             if self.conn is not None:
                 self.conn.close()
                 self.conn = None
+    
+    def start_transaction(self):
+        self.conn.execute("begin transaction")
+    
+    def commit(self):
+        self.conn.commit()
+    
+    def roolback(self):
+        self.conn.rollback()
 
-    def execute(self, sql: str, params: tuple = None):
+    def execute(self, sql: str, params: tuple = None, autocommit: bool = True):
         self.connect()
         with self.mutex:
-            cursor = self.conn.cursor()
-            cursor = cursor.execute(sql, params or ())
-            self.conn.commit()
+            if autocommit:
+                self.start_transaction()
+                cursor = self.conn.execute(sql, params or ())
+                self.commit()
+            else:
+                cursor = self.conn.execute(sql, params or ())
             return cursor
 
     def executescript(self, sqltext: str):
         self.connect()
         with self.mutex:
-            cursor = self.conn.cursor()
-            cursor.executescript(sqltext)
-            self.conn.commit()
+            self.start_transaction()
+            cursor = self.conn.executescript(sqltext)
+            self.commit()
             return cursor
 
 
 if __name__ == "__main__":
-    proxy = SQLiteProxy("test.sqlite3")
-    proxy.execute("CREATE TABLE IF NOT EXISTS t_user (id INTEGER PRIMARY KEY, name TEXT, age INTEGER)")
+    proxy = SQLiteProxy(":memory:")
+    with open("./src/flask-tpl/db/schema-ddl.sql", "r", encoding="utf8") as fp:
+        proxy.executescript(fp.read())

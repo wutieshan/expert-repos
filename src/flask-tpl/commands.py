@@ -8,16 +8,12 @@ from config import Constants as const
 def init_db():
     db = get_db()
 
-    with flask.current_app.open_resource(const.FLASK_DB_DDL_PATH) as fp:
-        sqltext = fp.read().decode("utf8")
-        click.echo(f"{sqltext=}")
-        db.executescript(str.replace(sqltext, "\r\n", " "))
+    with open(const.FLASK_DB_DDL_PATH, "r", encoding="utf8") as fp:
+        db.executescript(fp.read())
     
-    with flask.current_app.open_resource(const.FLASK_DB_DML_PATH) as fp:
-        sqltext = fp.read().decode("utf8")
-        click.echo(f"{sqltext=}")
-        db.executescript(sqltext)
-    
+    with open(const.FLASK_DB_DML_PATH, "r", encoding="utf8") as fp:
+        db.executescript(fp.read())
+
     click.echo("database initialized successfully.")
 
 

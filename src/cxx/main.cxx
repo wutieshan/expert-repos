@@ -1,20 +1,16 @@
-#include <atomic>
+#include <iostream>
 
-// 使用std::atomic_flag实现自旋锁
-class spinlock
+void test(int *t)
 {
-public:
-    spinlock(): flag_(ATOMIC_FLAG_INIT) {}
+    std::cout << "t1" << std::endl;
+}
 
-    void lock()
-    {
-        // 自旋等待, 一旦读取值变成false, 则表明线程已将标志设置为成立
-        // 可以发现, 这种实现是在lock()函数内忙等
-        while (flag_.test_and_set(std::memory_order_acquire)) {}
-    }
+void test(int t)
+{
+    std::cout << "t2" << std::endl;
+}
 
-    void unlock() { flag_.clear(std::memory_order_release); }
-
-private:
-    std::atomic_flag flag_;
-};
+auto main() -> int
+{
+    std::cout << (NULL == 0) << std::endl;
+}
