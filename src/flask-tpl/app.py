@@ -22,7 +22,9 @@ def app_factory():
         pass
 
     from commands import init_app
+    from src.blueprints import register_blueprints
 
     init_app(app)
+    register_blueprints(app)
 
     return app
