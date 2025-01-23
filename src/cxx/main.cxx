@@ -1,16 +1,43 @@
+#include <condition_variable>
 #include <iostream>
+#include <mutex>
+#include <queue>
 
-void test(int *t)
+class demo
 {
-    std::cout << "t1" << std::endl;
-}
+public:
+    demo() {}
 
-void test(int t)
-{
-    std::cout << "t2" << std::endl;
-}
+    void produce()
+    {
+        for (int i = 0; i < 20; i++) {
+            std::unique_lock<std::mutex> lock(mutex_);
+            cv_.wait(lock, [this]() { return queue_.size() < max_size; });
+            queue_.push(i);
+            std::cout << "produced: " << i << std::endl;
+            cv_.notify_one();
+        }
+    }
 
-auto main() -> int
-{
-    std::cout << (NULL == 0) << std::endl;
-}
+    void consume()
+    {
+        while (true) {
+            std::unique_lock<std::mutex> lock(mutex_);
+            cv_.wait(lock, [this]() { return !queue_.empty(); });
+            int value = queue_.front();
+            queue_.pop();
+            std::cout << "comsumed: " << value << std::endl;
+            cv_.notify_one();
+            if (value == 19) {
+                break;
+            }
+        }
+    }
+
+private:
+    std::queue<int> queue_;
+    std::mutex mutex_;
+    std::condition_variable cv_;
+
+    const int max_size = 10;
+};
