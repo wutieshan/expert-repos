@@ -1,7 +1,7 @@
 import sqlite3
 import threading
 
-from .base import Options, Proxy
+from ._base import Options, Proxy
 
 
 class SQLiteOptions(Options):

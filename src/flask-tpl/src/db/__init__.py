@@ -1,7 +1,8 @@
 import flask
-from .base import Proxy
-from ._sqlite import SQLiteProxy, SQLiteOptions
 from config import Constants as const
+
+from ._base import Proxy
+from .sqlite import SQLiteOptions, SQLiteProxy
 
 
 def get_db() -> Proxy:
