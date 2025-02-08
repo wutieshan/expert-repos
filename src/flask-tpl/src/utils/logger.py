@@ -2,6 +2,9 @@ import logging
 import logging.config
 import typing
 
+from config import Constants as const
+from src.utils.parse import FileParser
+
 
 class Logger:
     Config: typing.TypeAlias = typing.Union[typing.Mapping, str, None]
@@ -47,7 +50,8 @@ class Logger:
         if isinstance(config, typing.Mapping):
             return config
         elif isinstance(config, str):
-            raise NotImplementedError
+            fp = FileParser(config)
+            return fp.parse_dict()
         else:
             return self.DEFAULT_CONFIG
 
@@ -71,9 +75,6 @@ class Logger:
 
     def error(self, msg: str, **kwargs) -> None:
         self._logger.error(msg, exc_info=True, **kwargs)
-
-    # def exception(self, msg: str, **kwargs) -> None:
-    #     self._logger.exception(msg, **kwargs)
 
     def critical(self, msg: str, **kwargs) -> None:
         self._logger.critical(msg, exc_info=True, **kwargs)

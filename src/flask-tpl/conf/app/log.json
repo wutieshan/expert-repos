@@ -1,0 +1,44 @@
+{
+    "version": 1,
+    "disable_existing_loggers": false,
+    "incremental": false,
+    "formatters": {
+        "default": {
+            "class": "logging.Formatter",
+            "format": "[{asctime}.{msecs:03.0f}] {levelname:<5} | {threadName} | {module}:{funcName}:{lineno} | {message}",
+            "default": "%Y-%m-%d %H:%M:%S",
+            "style": "{",
+            "validate": true,
+            "defaults": {},
+            "maxsize": 1024
+        }
+    },
+    "filters": {
+        "infolog": {
+            "()": "src.core.log.filters.le",
+            "levels": "INFO"
+        },
+        "errorlog": {
+            "()": "src.core.log.filters.ge",
+            "levels": "WARNING"
+        }
+    },
+    "handlers": {
+        "stdout": {
+            "class": "logging.StreamHandler",
+            "formatter": "default",
+            "level": "INFO",
+            "stream": "ext://sys.stdout"
+        },
+        "infolog": {},
+        "errorlog": {}
+    },
+    "loggers": {
+        "default": {
+            "level": "DEBUG",
+            "propagate": false,
+            "handlers": ["stdout", "infolog", "errorlog"]
+        }
+    },
+    "root": {}
+}

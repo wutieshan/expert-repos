@@ -11,17 +11,24 @@
 
 
 {% block content %}
-    <form method="post">
-        <label for="username">username: </label>
-        <input type="text" name="username" id="username" required><br>
-        
-        <label for="password">password: </label>
-        <input type="password" name="password" id="password" onblur="pwd_check()" required>
-        <span id="password-msg"></span><br>
-        
-        <label for="confirm">confirm: </label>
-        <input type="password" name="confirm" id="confirm" onblur="pwd_comfirm()" required>
-        <span id="confirm-msg"></span><br>
+    <form id="login-form" method="post">
+        <div class="username-wrapper">
+            <label for="username">username: </label>
+            <input type="text" name="username" id="username" required>
+            <span class="msg"></span>
+        </div>
+
+        <div class="password-wrapper">
+            <label for="password">password: </label>
+            <input type="password" name="password" id="password" onblur="pwd_check()" required>
+            <span class="msg"></span>
+        </div>
+
+        <div class="confirm-wrapper">
+            <label for="confirm">confirm: </label>
+            <input type="password" name="confirm" id="confirm" onblur="pwd_comfirm()" required>
+            <span class="msg"></span>
+        </div>
         
         <button type="submit">register</button>
     </form>
