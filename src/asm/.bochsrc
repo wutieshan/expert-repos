@@ -1,0 +1,21 @@
+# memory
+megs: 32
+
+# ROM images
+romimage: file=C:/tieshan/env/bochs-3.0/BIOS-bochs-latest
+vgaromimage: file=C:/tieshan/env/bochs-3.0/VGABIOS-lgpl-latest.bin
+
+# drive
+# boot: floppy
+# floppya: 1_44=build/boot.img, status=inserted
+boot: disk
+ata0-master: type=disk, path="build/boot.img", mode=flat
+
+# log
+log: logs/bochs.log
+
+# disable mouse
+mouse: enabled=0
+
+# enable key mapping, using us layout default
+keyboard: keymap=C:/tieshan/env/bochs-3.0/keymaps/x11-pc-us.map
