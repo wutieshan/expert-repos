@@ -1,6 +1,5 @@
-org 0x7c00
-
-
+section .text
+    global start
 start:
     mov ax, 0x03
     int 0x10
